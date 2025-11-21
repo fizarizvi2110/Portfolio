@@ -1,0 +1,99 @@
+---
+title: "Supreme Court Citation Network"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+The constitution of the U.S. left unclear the role and authority of the federal judiciary. The Supreme Court had gradually established its own decisional legitimacy by strengthening the norm of *stare decisis*, a legal principle that requires the court's rulings to be grounded in the preceding decisions. The justices of the Supreme Court cite relevant precedents to justify their logics. Therefore, in the development of the U.S. laws, it's important to understand which cases critically shaped the later court rulings. In this exercise, we will anlyze the relation among the Supreme Court's decisions and its changes in the American legal history.  
+
+This exercise is based on:
+
+Fowler, J. H., T. R. Johnson, J. F. Spriggs, S. Jeon, and P. J. Wahlbeck. 2006. “[Network Analysis and the Law: Measuring the Legal Importance of Precedents at the U.S. Supreme Court.](http://dx.doi.org/10.1093/pan/mpm011)” *Political Analysis* 15(3): 324–46.
+
+and 
+
+Fowler, James H., and Sangick Jeon. 2008. “[The Authority of Supreme Court Precedent.](http://dx.doi.org/10.1016/j.socnet.2007.05.001)” *Social Networks* 30(1): 16–30.
+
+The data in `judicial.csv` represents Supreme Court cases with variables 
+
+--------------------------------------------------------------------------------
+ Name                 Description
+ -------------------- ----------------------------------------------------------
+ `caseid`	            unique numerical id given to each case
+ 
+ `usid`               US Reporter id (or numerical equivalent for early Reporters)
+ 
+ `parties`           	Names of parties to case
+ 
+ `year`               Year that the case was decided by the Supreme Court
+ 
+ `oxford`            	Does case appear on Oxford list of salient cases? (Yes = 1, No = 0)
+ 
+ `liihc`	            Does case appear on Legal Information Institute's list of important 
+                      cases? (Yes = 1, No = 0)
+--------------------------------------------------------------------------------
+
+The data in `citation.csv` contains information about citation with variables:
+
+--------------------------------------------------------------------------------
+ Name                 Description
+ -------------------- ----------------------------------------------------------
+ `citing.id`	        The `caseid` of the citing case
+ 
+ `cited.id`           The `caseid` of the cited case
+--------------------------------------------------------------------------------
+
+## Question 1
+
+The original authors used `caseid` which they arbitrarily created for convenience, but matching US Reporter ID will allow us to identify cases more easily. After you load `citation.csv`, add following four new columns to it: `citing.usid`, `cited.usid`, `citing.year`, and `cited.year`. You should match the caseid of 'citation.txt' with the caseid of 'judicial.csv'.  
+
+Hint : Use `merge` to match on `caseid`.
+
+## Answer 1
+```{r, message=FALSE, warning=FALSE}
+library(dplyr)
+
+#reading in data into data frames, and we have subset judicial for the column names which provide useful data. 
+judicial <- read.csv("downloads/judicial.csv") %>% data.frame()
+judicial <- judicial[c("caseid", "usid", "year")]
+citation <- read.csv("downloads/citation.csv") %>% data.frame() 
+
+#create citing.usid & citing.year by merging the citation and judicial dataframes to match on citing.id and caseid
+cases1 <- merge(citation, judicial, by.x = "citing.id", by.y = "caseid", all.x = T)
+
+#renaming the columns appropriately according to the question. We added citing.year and citing.usid nu renaming the columns year and usid corresponding to citing.id in the previous merge. 
+cases1 <- cases1 %>%
+  rename(citing.year = year,
+         citing.usid = usid)
+
+#create cited.usid & cited.year by merging the cases1 dataframe with the judicial dataframe but this time by matching on cited.id with caseid to get the data on the cited.id's year and usid
+cases2 <- merge(cases1, judicial, by.x = "cited.id", by.y = "caseid", all.x = T)
+
+#renaming the columns appropriately according to the question. We added cited.year and cited.usid by renaming the year and usid columns corresponding to the cited.id from the previous merge.
+cases2 <- cases2 %>%
+  rename(cited.year = year,
+         cited.usid = usid)
+
+#After cases2 merge, some data on citing.id and cited.id were lost to the arbitrary caseid of the judicial dataframe. We will merge cases2 with citation on citing.id and cited.id to make sure we get those values back. Then, as any duplicate columns appear, we can subset the data for only the ones that we want. We will have duplication from the additional column that was added and then removed.
+cases3 <- merge(cases2, citation, by.x = "citing.id", by.y = "cited.id", all.x = T)
+cases3 <- cases3[c("citing.id", "cited.id", "citing.usid", "citing.year", "cited.usid", "cited.year")]
+
+#In the case of any duplicated rows from the last merge and from removing the arbitrary column, we will use distinct on cases3 to rid of any duplication in the data frame's rows. 
+cases3 <- cases3 %>% 
+  distinct()
+
+#Looking at the cases3 data frame with the new columns added, we can see the citated.id's of earlier cases that were cited in the citing.id cases. We can also see the years in which the citing.id cases were decided and the years referred to in the cited.id cases. We also have a comprehensive dataframe that does not have arbitrary caseids like the judicial dataset initially did. From the merges, we were able to get the citing.usid, citing.year, cited.usid, and cited.year with the ids for both the cited and citing cases. 
+```
+
+## Question 2
+
+We examine 'the degree distribution of a network', that is, the variation in the total number of inward and outward citations. Using a package `igraph`, calculate the inward degrees and the outward degrees of each Supreme Court case. Plot the histogram with 50 bins respectively, mark the five quantile values with vertical lines. What are the characteristics of the degree distributions? 
+
+## Answer 2
+
+```{r, message=FALSE, warning=FALSE}
+library(igraph)
+# Inward citation and outward citation
+```
+

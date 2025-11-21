@@ -1,0 +1,357 @@
+---
+title: "Analyzing Political Stances"
+author: "Fiza Rizvi"
+date: " November 2022"
+output: 
+  word_document:
+    reference_docx: template.docx
+---
+
+```{r setup, include=FALSE}
+
+# formatting options and packages for Rmarkdown
+knitr::opts_chunk$set(echo = TRUE, 
+                      warning = FALSE,
+                      error = FALSE, 
+                      message = FALSE, 
+                      tidy.opts=list(width.cutoff=60),
+                      tidy = TRUE,
+                      fig.align='center', fig.width = 5.0, fig.height = 3) #just for the outline
+
+old <- options(pillar.sigfig = 6) # shows 6 digits in tibbles
+
+# install whatever package you have not already installed by deleting "#" and editing this list
+# install.packages(c("formatR", "tidyverse", "dplyr", "haven", "gmodels", "moments", "ggplot2"))
+                 
+# packages to keep everytime you use R
+library(formatR)                # allows to format R code
+library(tidyverse)              # allows for Tidy Verse data-cleaning commands
+library(dplyr)                  # allows to look at subgroup values
+
+# Paper 2 specific packages
+library(haven)                  # package allows R to read Stata datasets ("read_dta" command)
+library(gmodels)                # package that produces nice crosstables
+library(moments)                # package that allows to get standardazed coefficients
+library(ggplot2)                # package for graphs
+
+# Set-up
+rm(list = ls(all = TRUE))       #remove all previous objects 
+
+```
+
+\newpage
+
+# Analysis 1: two interval/ratio level variables
+
+## Step 1: Theory 
+
+![](educclimate.png)
+  My theory is as follows: Those with a higher level of education will express more concern about the environment. Individuals with greater education will appreciate and respect the scientific institution, and trust the climate/environmental scientists over politicians' idea. As they go through more years of school, they will follow academics' opinions on science. For those with less schooling, they will look to alternative sources of information rather than academics for information and may come to view climate change/environmental issues in general as a more politicized issue than those who have completed more schooling. 
+  
+  
+$$\hat{envconcern} = b_{0} + b_{1}\hat{(education)}$$
+
+$H_0$ : Education is not related to an individual's concern for the environment, implying that $b_{1} = 0$,
+$H_1$ : Education is related to an individual's concern for the environment, implying that $b_{1} \neq 0$
+
+##Measurement
+
+  To test this hypothesis, we take the following variables from GSS 2021: educ (respondent’s number of years of schooling) and grncon (respondent's level of concern for the environment). The variable education simply reports total number of years of schooling for the respondent. The variable grncon has the following question wording: "Generally speaking, how concerned are you about environmental issues. Please tell me what you think, where 1 means you are not concerned at all and 5 means you are very concerned." No recoding is needed for the variables as NA's are already excluded in the variables' original coding. No recoding is needed for both variables since they already exclude NA's, however they will be renamed to education and envconcern correspondingly. Hence, the original frequency distributions follow that of the recoded ones since nothing was recoded except for the name.The unit of analysis will be individuals.
+  
+  For education, it can be seen that categories 0-11 are relatively low percentages ranging from 0.025-2.093%. This corresponds to individuals who stopped schooling before obtaining a high school diploma. 20.903% have completed 12 years of schooling, corresponding to a high school diploma, 13.667% have completed 14 years of schooling, aligning with an associate's degree, and 23.752% have completed 16 years of education (bachelor's degree) which is also the highest frequency in the table. After 16 years of schooling, 6.505% have done 17, 8.850% have done 18, 2.849% have done 19, and 5.446% have completed 20 years of schooling. From this distribution, most individuals in the sample have either a high school diploma, an associate's, or a bachelor's degree (highest three frequencies).
+  
+  For the envconcern variable, category 1, which corresponds to not concerned at all, is about 4.443% of respondents, category 2 which corresponds to a little bit concerned in context of the scale is 7.789%, category 3 which corresponds to moderately concerned in context of the scale is 22.984%, category 4 which corresponds to concerned in context of the scale is 24.026%, and category 5 which corresponds to "very concerned" is 40.757%. Most individuals, according to the frequency table, are at least moderately concerned to very concerned (category 3 to category 5), and the highest frequency occurs in the "very concerned" category (5). From the frequency distribution, we can see that most individuals in this sample are concerned about environmental issues with very few identifying with the lower categories of 1 and 2 on little to no concern. 
+  
+  The scatterplots do not show much about the relationship in its visualization, however the density plot does. In the density plot, it should be noted that most points occur at 12 up to 16 years of schooling, corresponding with the frequencies in the distribution. Generally, there is a lot of points concentrated at the 5 category from 12 years of schooling onwards. It appears that school may have an effect on concern for the environment as there is more clustering at category 5 as the years of schooling increase, and less at the lower levels of concern categories. For post-16 years of schooling, most points are concentrated at categories 4 and 5 with very few at the 2 category, and almost none at the 1 category. As such, there may be an increase in concern for the environment as years of schooling increases, but it does not appear to be as substantial as theorized. 
+
+ 
+```{r , size = "footnotesize"}
+
+# Step 2: data cleaning
+
+# load data 
+gss2021 <- haven::read_dta("gss2021.dta") 
+
+# keep only the relevant variables
+gss1 <- gss2021[,c("educ","grncon")]
+
+# labels, value labels, and frequency distribution as-is
+
+list(
+  attributes(gss1$educ)$label,
+  attributes(gss1$educ)$labels,
+  descr::freq(ordered(gss1$educ), plot = F)
+)
+
+list(
+  attributes(gss1$grncon)$label,
+  attributes(gss1$grncon)$labels,
+  descr::freq(ordered(gss1$grncon), plot = F)
+)
+
+# recode, save it with a new name.
+
+gss1$education <- gss1$educ
+     descr::freq(ordered(gss1$education), plot = F)
+
+gss1$envconcern <- gss1$grncon
+     descr::freq(ordered(gss1$envconcern), plot = F)
+
+```
+
+
+##Statistical Analysis
+
+```{r message=FALSE}
+
+# Step 3: scatterplot
+plot(gss1$education, gss1$envconcern)
+
+# Make it better
+plot(gss1$education, gss1$envconcern, xlab="Years of Schooling", ylab="Concern for Environment", main = "Scatterplot")
+
+# Even better
+ggplot(gss1, aes(x= education, y= envconcern)) +  geom_point(size=2, shape=23) + 
+  labs(x = "Years of Schooling") + labs(y = "Concern for Environment") 
+
+# What are the sizes and shape? See http://www.sthda.com/english/wiki/ggplot2-point-shapes
+
+```
+
+
+```{r message=FALSE}
+
+ggplot(gss1, aes(x= education, y= envconcern)) +  geom_point(size=1) +
+labs(x = "Years of Schooling") + labs(y = "Concern for Environment") + geom_jitter()
+
+```
+
+```{r message=FALSE}
+
+# Step 4: regression
+summary(lm(gss1$envconcern ~ gss1$education))
+
+```
+
+
+```{r message=FALSE}
+
+# Standardized regression coefficients 
+
+gss1$education_std <- (gss1$education - mean(gss1$education, na.rm=TRUE)) / sd(gss1$education, na.rm=TRUE)
+gss1$envconcern_std <- (gss1$envconcern - mean(gss1$envconcern, na.rm=TRUE)) / sd(gss1$envconcern, na.rm=TRUE)
+
+summary(gss1$education_std)
+summary(gss1$envconcern_std)
+
+# After that transformation, we re-estimate the regression
+
+summary(lm(gss1$envconcern_std ~ gss1$education_std))
+
+
+```
+
+
+```{r message=FALSE}
+
+# Pearson correlation 
+
+cor(gss1$envconcern, gss1$education, use = "complete.obs")
+
+```
+
+$$envconcern = 3.082097 + 0.054056*education $$
+
+  The $\beta$ coefficient is in the hypothesized direction, as it is positive. This means the regression models an average increase in an individual's level of concern for the environment as their years of schooling increase as hypothesized. For each additional year of schooling, on average, an individual's level of concern will raise 0.054056 in envconcern (environmental concern). 
+  
+  At the critical value of 1.96 for the t-statistic from $\alpha$ = 0.05, |5.683| > 1.96 for the coefficient. Therefore, we can reject the null hypothesis that there is no relationship between education and environmental concern with 95% confidence. Although the coefficient is statistically significant, the value of the $\beta$ coefficient as 0.054 is not substantively significant. Considering the categories differing on concern from 1 to 5, an average difference of 0.054 category as you increase one year in schooling is not very large or impactful on the level of environmental concern. Although the Pearson's correlation cannot be used in the regression equation, it shows that 0.132 of the variance in envconcern can be explained by education. This is also a weak relationship, as there may be other factors that account for much more of the variation in environmental concern. The standardized regresison coefficient is 0.130903, which is higher than that of the unstandardized version, but may only be used on bivariate cases. (standardized would mean for each additional year of schooling, environmental concern increases by 0.130903 categories of envconcern on average).
+
+
+\newpage
+# Analysis 2: Religion and Abortion
+
+##Theory
+
+![](RelAbortion.png)
+
+  The hypothesis is that an individual that is more religious (operationalized and measured with question about the respondent’s strength of religion) is more likely to be pro-life (or against abortion) (operationalized and measured with question about the respondent’s level of agreement with the pro-life movement). Those who are religious will be more swayed by the narrative that life is sacrosanct and begins at conception. As a part of their strong adherence to their beliefs, they will generally subscribe to the religious perspective that life is a miracle and abortion goes against the sanctity of life. Meanwhile, those who are less religious will be more swayed by the narrative that life begins at scientifically identified moments of consciousness or heart-beats with less emphasis on the 'role of god' in giving life. As such, those with more religious beliefs will identify with the pro-life movement against abortion. 
+
+We will estimate $\beta_{1}$ using regression analysis. The following is the equation we will estimate for this example from our sample data. 
+
+$$\hat{prolifeSupport} = b_{0} + b_{1}\hat{(religiousness)}$$
+
+Null hypothesis ($H_0$): There is no difference in proportions between mostly religious and mostly non-religious individuals on their abortion stance, implying that $b_{1} = 0$,
+Alternative hypothesis ($H_1$): There is a difference in proportions between mostly religious and mostly non-religious individuals on their abortion stance, implying that $b_{1} \neq 0$.
+
+##Measurement
+
+  To test this hypothesis, we take the following variables from GSS 2021: RELPERSN (the respondent’s strength of religiousness) and PROLIFE (the respondent’s level of agreement with the pro-life movement). The unit of analysis will be individuals. The RELPERSN variable is questioned with the following wording: "To what extent do you consider yourself a religious person? Are you very religious, moderately religious, slightly religious, or not religious at all?" The answers, 1-4, correspond to the following: 1 as very religious, 2 as moderately religious, 3 as slightly religious and 4 as not religious at all. The independent variable, RELPERSN, will be dichotomized into two categories of “mostly religious” (1, 2 = 1), i.e., respondents who are "strongly" and "moderately" religious, and “mostly non-religious” (3, 4 = 0), i.e., respondents who are "slightly" religious and “not religious at all." Those who are mostly religious, ranging from strongly to moderately (categories 1-2 in RELPERSN) will be considered as mostly religious people since their strength of beliefs is comparatively stronger than the other categories. On the other hand, those who are mostly non-religious (categories 3 and 4 in RELPERSN) will have their own category since they do not subscribe moderately or even at all to any religious set of beliefs and thus have a far weaker comparative strength in religion than categories 1 and 2. The recoded RELPERSN variable will be renamed religiousness_rec. 
+  
+  The frequency distribution for the original RELPERSN variable shows that 13.10% of individuals are strongly religious, 32.47% are moderately religious, 23.75% are slightly religious and 30.68% are not religious at all. The strongly religious category has the lowest percentage of individuals whereas the moderately religious category has the highest percentage of individuals. Notably, the 'not religious at all' category has a close percentage to those who are moderately religious but over double of the strongly religious category. Therefore, this sample is less strongly religious considering the frequency distribution. The frequency distribution for the dichotomized religiousness_rec variable shows 54.43% falling into the "mostly non-religious" category of 0, and 45.57% falling into the "mostly religious" category of 1. There is less than 10 percentage points difference between the amount of respondents who identify with each of the recoded and dichotomized categories in religiousness_rec. 
+  
+  The PROLIFE variable is questioned with the following wording: "We hear a lot of talk these days about abortion. Please indicate to what extent you agree or disagree with each of the following statements: I consider myself pro-life." The answers, 1-5, correspond to the following: 1 as strongly agree, 2 as agree, 3 as neither agree nor disagree, 4 as disagree and 5 as strongly disagree. The dependent variable, PROLIFE, will also be dichotomized into two categories of individuals: ones who consider themselves prolife (recoding: categories 1,2 = 1) and ones who do not consider themselves prolife (recode: categories 4,5 = 0). The category 3 in the PROLIFE variable will be omitted since it outlines those who "neither agree nor disagree" and thus do not have a stance on whether they identify as pro-life or not. The recoded PROLIFE variable will be renamed pro_life_rec. The categories 1 and 2 are recoded as 1 because they identify individuals who agree and identify with the prolife movement, whereas the categories 4 and 5 are recoded as 0 since they identify individuals who disagree and do not identify with the pro life movement. 
+  
+   The frequency distribution for the original PROLIFE variable shows that 18.66% of individuals strongly agree, 22.36% agree, 26.60% neither agree nor disagree, 16.23% disagree, and 16.14% strongly disagree with the statement: "I consider myself pro-choice." It appears there is a substantial percentage of individuals who did not have an opinion on the statement. Yet the percentages in each of the other categories are comparable. In those that did express an opinion, the category 2 of agree has the highest percentage of 22.36% when the neither agree nor disagree category is excluded, and the remaining categories of "strongly agree", "disagree", and "strongly disagree" have comparable percentages. The frequency distribution for the dichotomized PROLIFE variable, prolifeSupport_rec, shows 44.11% as in disagreement with the prolife sentiment and 55.89% as in agreement with the prolife sentiment. There is approximately a 10 percentage point difference between the 0 and 1 category, yet the higher percentage of the two is those who agree with the statement that they identify as prolife. 
+
+
+```{r , size = "footnotesize"}
+
+# Step 2: data cleaning
+
+# keep only the relevant variables
+gss2021 <- haven::read_dta("gss2021.dta") 
+gss2 <- gss2021[,c("relpersn", "prolife")]
+
+# labels, value labels, and frequency distribution as-is
+
+list(
+  attributes(gss2$relpersn)$label,
+  attributes(gss2$relpersn)$labels,
+  descr::freq(ordered(gss2$relpersn), plot = F)
+)
+
+list(
+  attributes(gss2$prolife)$label,
+  attributes(gss2$prolife)$labels,
+  descr::freq(ordered(gss2$prolife), plot = F)
+)
+
+# recode, save it with a new name - no updates are needed to the coding of the variable since NAs are already excluded. The distribution will not change.
+
+  gss2$religiousness <- gss2$relpersn
+     descr::freq(ordered(gss2$religiousness), plot = F)
+
+  gss2$prolifeSupport <- gss2$prolife
+     descr::freq(ordered(gss2$prolifeSupport), plot = F)
+
+# recode to dichotomous, save it with a new name, show the updated frequency distribution:
+     # For religious_rec, 0 means weakly religious while 1 means strongly religious
+ 
+  gss2$religiousness_rec <- car::recode(gss2$religiousness, "c(3, 4) = 0; c(1,2) = 1" )
+     descr::freq(ordered(gss2$religiousness_rec), plot = F)
+
+     #For pro_life, 0 means disagree while 1 means agree with the prolife sentiment, 3 will be NA since it does not provide agree nor disagree
+ gss2$prolifeSupport_rec <- car::recode(gss2$prolifeSupport, "c(4,5) = 0; c(1,2) = 1; 3 = NA" )
+     descr::freq(ordered(gss2$prolifeSupport_rec), plot = F)
+     
+```
+
+##Statistical Analysis 
+
+```{r message=FALSE}
+
+# Step 3: crosstab
+
+CrossTable(gss2$prolifeSupport_rec, gss2$religiousness_rec, digits=2, prop.t = F, 
+           prop.chisq = F, prop.c = T, prop.r = F, format = 'SPSS') 
+
+```
+
+
+```{r message=FALSE}
+
+# Step 4: regression
+summary(lm(gss2$prolifeSupport_rec ~ gss2$religiousness_rec))
+
+```
+
+$$prolifeSupport = 0.35456 + 0.43666 * religiousness$$
+From the cross-tab results in my sample, among people who are mostly non-religious 35.46% identify with the stance of the pro-life movement, and among people who are mostly-religious 79.12% identify with the stance of the pro-life movement. In this sample, being mostly religious from mostly non-religious increased the likelihood to support pro-life sentiments, and be against abortion, by over two times. This is suggestive evidence that an individual that is more religious is more likely to be less supportive of abortion, and thus pro-life.
+
+There is a $79.12 - 35.46 = 43.66$ percentage-point difference.
+
+Difference in proportions in Step 3 (cross-tab) = 0.4366
+
+Regression coefficient in Step 4 (linear regression) = 0.43666
+
+  Both the difference in proportions and the regression coefficient are the same, because the regression is a different means of representing the cross-tab. They both identify what happens in the likelihood of being pro-life when an individual is mostly religious compared to non-religious. They compare the proportion of individuals who are pro-life and mostly non-religious with those who are pro-life and mostly religious to obtain the coefficient and difference in proportions from the cross-tab. 
+
+From the linear regression results, going from mostly non-religious to mostly religious increases the likelihood of being pro-choice by 43.666 percentage points.The difference in the likelihood of being pro-life given a person's level of religiousness is statistically significant. This is suggestive evidence that, on average, being more religious increases the likelihood of being pro-life. At the critical value of 1.96 for the t-statistic, when the alpha level = 0.05, we can also reject the null hypothesis that there is no difference in proportions between mostly religious and mostly non-religious individuals on their abortion stance, as the t-value is |24.83| > 1.96 for the beta coefficient. Not only is the coefficient statistically significant, but it is also substantively significant. A difference of 44.062 percentage points as you go from mostly non-religious to mostly religious signifies that on average, when an individual is mostly religious they are 44.062 percentage points more likely to be pro-life than an individual who is mostly non-religious. This is nearly 50 percentage points, which is evidently impactful on the stance one takes on abortion. Therefore, the regression acts as evidence in support of my theory. 
+
+
+
+\newpage
+# Analysis 3: The Relationship between Race and Perceptions of Police Bias Against Black People
+
+##Theory
+
+![](RacePolice1.png)
+ The hypothesis is that black people will have a stronger perception of police bias against black people than white people. Individuals within the black community may feel police have a stronger bias against black people, while white people will have a weaker perception of this bias, since they are directly impacted by profiling and excessive violence that the black community faces in situations with police. Other groups of races that are non-white will be able to sympathize more easily with the black racial group over issues surrounding racial bias in the police since they are also non-white and may face discrimination in other areas of life, but will not exhibit as great of a perception of police treatment against blacks as the black racial group itself since they are also less affected by this issue. 
+ 
+We will estimate $\beta_{1}$ using regression analysis. The following is the equation we will estimate for this example from our sample data. 
+
+$$\hat{policebias} = white + b_{2}*\hat{black} + b_{3}*\hat{other}$$
+
+Null hypothesis ($H_0$): There is no difference in means between whites and blacks on the perception of police bias against blacks $b_{2} = 0$,
+Alternative hypothesis ($H_1$): There is a difference in means between whites and blacks on the perception of police bias against blacks $b_{2} \neq 0$.
+
+## Measurement
+
+  To test our hypothesis, we take the following variables from GSS 2021: race (the respondent's racial identity), and poltrtblk (the respondent’s view of whether or not black people are treated worse by police). For the race variable, the respodent is simply asked to identify their racial group as white (1), black (2), or other(3). These are the only groups needed for this analysis since we are primarily focused on the difference between blacks, other minority groups, and whites in assessing police bias against black people. There is no distinction needed in the other category. For the poltrtblk variable, it is worded as the following: "In general, do the police treat Whites better than Blacks, treat them both the same, or treat Blacks better than Whites?" The variable is then operationalized from 1-7, with 1 as "treat Whites much better than Blacks", 2 as "treat Whites moderately better than Blacks", 3 as "treat Whites a little bit better than Blacks", 4 as "treat them both the same", 5 as "treat Blacks a little better than Whites", 6 as "treat Blacks moderately better than Whites", and 7 as "treat Blacks much better than Whites." 
+  
+  For the race variable in its original frequency distribution, 78.18% of the respondents are white, 11.64% are black, and 10.18% are other. This variable does not require recoding for the purposes of this analysis. There is clearly a substantially larger sample of whites than any other racial group for this variable. For the poltrtblk variable, 39.2612% think police treat whites "much better" than blacks, 19.4158% think police treat whites "moderately better" than blacks, 7.1735% think police treat whites "a little better" than blacks, 32.8608% think police treat whites and blacks "the same", 0.8162% think police treat blacks "a little better" than whites, 0.2148% think police treat blacks "moderately better" than whites, and 0.2577% think police treat blacks "much better" than whites. The highest frequency category is that of category 1, police treat whites "much better" than blacks, and the lowest three categories with percentages of less than 1 are those individuals who stated in any capacity that blacks are treated any level of better than whites by police. For purposes of this analysis, the categories in which individuals think police treat blacks better will be excluded. This is to treat the variable as ordinal ascending from category 4 (to be recoded as 1) to 1 (to be recoded as 4. These categories are directly relevant to the theory, as they will explain to which extent certain racial groups will see police as having a bias against blacks, not against whites (not part of the theory). Consequently, we will recode the poltrtblk variable with category 4, police treat blacks and whites the same, as 1; category 3, police treat whites a little better than blacks, as category 2; category 2, police threat whites moderately better than blacks, as 3; and category 1, police treat whites much better than blacks, as category 4. Therefore, a higher category in the recoded variable, policebias, will correspond with a greater perception of police bias against blacks. Once poltrtblk is recoded as policebias, the frequency distribution shows 33.290% think police treat blacks and whites the same, 7.267% think police treat whites a little better than blacks, 19.669% think police treat whites moderately better than blacks, and 39.774% think police treat whites much better than blacks. The highest frequency is still the "police treat whites much better than blacks" category with 39.774%, yet we can also  notice the second highest category in terms of percentage is "police treat blacks and whites the same" with 33.290%. This reflects how the sample's reponses to this question are primarily divisive, with large frequencies at both opposite answers.  
+
+
+```{r , size = "footnotesize"}
+
+# Step 2: data cleaning
+
+# keep only the relevant variables
+gss3 <- gss2021[,c("race", "poltrtblk")]
+
+# labels, value labels, and frequency distribution as-is
+
+list(
+  attributes(gss3$race)$label,
+  attributes(gss3$race)$labels,
+  descr::freq(ordered(gss3$race), plot = F)
+)
+
+list(
+  attributes(gss3$poltrtblk)$label,
+  attributes(gss3$poltrtblk)$labels,
+  descr::freq(ordered(gss3$poltrtblk), plot = F)
+)
+
+# recode, save it with a new name, show the updated frequency distribution
+
+gss3$racecat <- gss3$race
+  descr::freq(ordered(gss3$racecat), plot = F)
+
+#Negligible number of people in 5, 6, 7 and to operationalize with theory we will exclude these categories as they are not relevant to the hypothesis directly. Recode categories so a higher number corresponds with a greater perception of police bias against blacks. 
+ gss3$policebias <- car::recode(gss3$poltrtblk, "c(5, 6, 7) = NA; 1 = 4; 2 = 3; 3 = 2; 4 = 1")
+     descr::freq(ordered(gss3$policebias), plot = F)
+
+```
+
+
+## Statistical Analysis
+
+```{r message=FALSE}
+
+# Step 3: Means comparison
+
+gss3 %>% group_by(racecat) %>%
+  dplyr::summarise(mean=mean(na.omit(policebias), digits = 6), sd=sd(na.omit(policebias)), freq=length(na.omit(policebias)))
+
+```
+
+```{r message=FALSE}
+
+# Step 4: regression
+
+# We will create the dummy variable and use other as the reference category since we are interested in how blacks perceive police bias against blacks in comparison to whites.
+  
+  summary(lm(gss3$policebias ~ as.factor(gss3$racecat)))
+
+```
+
+$$policebias = 2.52499 + 0.86895*black + 0.36189*other$$
+
+  In comparing each racial groups' mean, the race category 1, corresponding to whites, has the lowest mean, meaning the lowest average of perception of police bias against blacks out of the three race categories. The mean of 2.525 is lower than that of the race category 2 (black), which has the highest mean at 3.393. The race 2 category showcases that the average perception of police bias against blacks is highest among the black racial group, which highlights what was hypothesized. The race category 3 shows that the other race category has a higher average mean on the perception of police bias against blacks than the white category (2.887), but less than that of the black category. This suggests that blacks, on average, perceive a higher level of police bias against blacks than whites or other races, and also that the other race category, on average, perceives more police bias against blacks than whites.
+
+  The base reference category selected for the dummy version of the regression equation is the white category, because in the theory we are interested in how primarily blacks and non-whites in general view the perception of police bias against blacks comparative to whites. Moreover, it will show how blacks vary from the white category in the regression through its coefficient. The coefficient for the black category is 0.86895, which means that going from white to black increase, on average, an individual's perception of police bias against blacks by 0.86895 categories, an almost full category difference. Being black, according to the regression, would mean an average black person identifies a (2.88688 + 0.50706) = 3.39394 category in perception of police bias against blacks, which is also the mean of the black category in the policebias variable. This corresponds with the theory that black people will have the highest perception of police bias against black people. It also aligns with the theory that blacks will perceive more police bias against blacks than whites will, since the sign of the blacks' coefficient is positive and large in magnitude, indicating a higher perception of police bias. Being white, will mean an average white individual will identify with the base's 2.52499 category which is also the mean of the white category in the policebias variable. An average 'other/ racial group individual will also have a higher average perception of police bias against black people than whites, with an increase of 0.36189 category in the policebias variable. This means going from white to 'other' will increase an individual's perception of police bias against blacks by 0.36189 categories. Yet, the magnitude of this difference is not as large as that of the black category, meaning that on average blacks perceive police bias against black people to be worse than other racial groups, while whites will perceive the lowest police bias against black people among the three racial categories. 
+
+
+The coefficient of the black dummy variable (0.86895) is statistically significant at the $\alpha$ = 0.05 level with a critical value of 1.96 for the t-statistic (|10.41| > 1.96). Thus, we can reject the null hypothesis that there is no difference in means between the black and white race categories on the perception of police bias against blacks. The value of 0.86895 may also be substantively significant as it mirrors an almost category increase (greater perception of police bias against blacks) for black people in comparison to whites (from treated the same to treated a little worse, from a little worse to moderately worse, and from moderately worse to much worse). The coefficient of the other race dummy variable (0.36189) is also statistically significant at the $\alpha$ = 0.05 level (|4.01| > 1.96). This means that the 'other' category is also statistically significant in comparison to the white category on their perception of police bias against blacks. The 'other' category, then, has a positive relationship with the perception of police bias against blacks in comparison to whites as the base category. In summary, being black has a statistically and possible substantively significant and positive impact on a respondent's perception of police bias against blacks. 
+

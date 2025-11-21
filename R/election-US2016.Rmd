@@ -1,0 +1,128 @@
+---
+title: "Analyzing the 2016 US Presidential Election"
+output:
+  pdf_document: default
+  html_document: default
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+We analyze returns from the 2012 and 2016 elections in order to
+understand the social and demographic trends that may have contributed
+to Donald Trump's victory in 2016. We will first examine how Republican
+vote share at the county level has changed from 2012 to 2016. Then, we
+will look at four variables that were prominent in the discourse around
+the election -- race, education, unemployment, and immigration -- to see
+how well they predict GOP electoral gains at the county level.
+
+We will be working with three datasets. The first, `election2012.csv`,
+has one observation per county and contains the following variables:
+
+| Name             | Description                                                  |
+|:-----------------|:-----------------------------------------------------|
+| `FIPS`           | FIPS code (unique county identifier)                         |
+| `state`          | State abbreviation                                           |
+| `county`         | County name                                                  |
+| `votes_dem_12`   | Number of votes cast for Democratic candidate, 2012 election |
+| `votes_gop_12`   | Number of votes cast for Republican candidate, 2012 election |
+| `votes_total_12` | Total number of votes cast in 2012 election                  |
+
+The second, `election2016.csv`, has the same data structure and similar
+variable names but reports data for the 2016 presidential election.
+
+The third dataset, `county.csv`, includes social and demographic
+characteristics for each county:
+
+| Name              | Description                                                                                                                                                     |
+|:-----------------|:-----------------------------------------------------|
+| `FIPS`            | FIPS code (unique county identifier)                                                                                                                            |
+| `pct_for_born15`  | Percent of county's population that is "foreign born" according to the U.S. Census, meaning anyone who is not a U.S. citizen at birth (measured over 2011-2015) |
+| `pct_bach_deg15`  | Percent of county population holding a Bachelor's degree or above (2011-2015)                                                                                   |
+| `pct_non_white15` | Percent of county population that is not white (2011-2015)                                                                                                      |
+| `pct_unemp16`     | Percent of county population that is unemployed, BLS estimates (average, Jan-Oct 2016)                                                                          |
+| `pct_unemp12`     | Percent of county population that is unemployed, BLS estimates (average, Jan-Oct 2012)                                                                          |
+
+## Question 1
+
+Start by load all three datasets. Merge the three datasets by FIPS code
+to construct one complete data file for analysis. Check your merge to
+see how many observations came in from all three sources. Did you lose
+much data? Finally, perform listwise deletion (hint: check section 3.2
+of *QSS*) of missing values on the full dataset. Did you lose much data?
+Get whatever characteristics you can on the data you lost. What can you
+say about these observations?
+
+## Answer 1
+
+```{r}
+## read in data
+returns12 <- read.csv("/Users/juansantiagobarragan/Documents/GitHub/first_unguided_project-team_2/election2012.csv")
+returns16 <- read.csv("/Users/juansantiagobarragan/Documents/GitHub/first_unguided_project-team_2/election2016.csv")
+covars <- read.csv("/Users/juansantiagobarragan/Documents/GitHub/first_unguided_project-team_2/county.csv")
+
+## which columns do we want in both? No need to duplicate state and county.
+#FIPS votes_dem_12 votes_gop_12 votes_total_12 votes_dem_16 votes_gop_16 votes_total_16 pct_for_born15 pct_bach_deg15 pct_non_white15 pct_unemp12 pct_unemp16
+## now, lets merge
+p1merge <- merge(returns12,returns16[c("FIPS","votes_dem_16","votes_gop_16","votes_total_16")],by="FIPS")
+
+# merged datasets for votes for 2012 and 2016, made sure to merge columns that was not 'County' or 'State'
+## did we lose any observations?
+#No Observations were lost, 3141 observations remain 
+## now let's merge on covariates
+
+county_merge <- merge(p1merge,covars,by="FIPS") #merged the covariates that take into account County demographics with p1merge
+
+## remove missing values (listwise deletion)
+complete_df <- county_merge[complete.cases(county_merge), ] #removed rows that contain any missing values to clean our dataset 
+
+## how much data did we lose?
+#We lost 29 rows 
+## identify lost data
+county_merge[!complete.cases(county_merge),] #identified rows that had N/A part of the dataset
+```
+
+## Question 2
+
+Compute the Republican vote share as a proportion of total votes, in
+2012 as well as in 2016. Also compute the percent difference in this
+Republican vote share variable from the 2012 to 2016 election. Plot the
+distribution of this percent difference, with a red line at the median.
+
+Then, subset your data to just the battleground states: Florida, North
+Carolina, Ohio, Pennsylvania, New Hampshire, Michigan, Wisconsin, Iowa,
+Nevada, Colorado, and Virginia. Plot the distribution of the same
+variable in this sample, with a red line at the sample median.
+
+## Answer 2
+
+```{r}
+library(ggplot2)
+## vote share variables: Republican / Total
+rep_12_voteshare <- county_merge$votes_gop_12/county_merge$votes_total_12
+rep_16_voteshare <- county_merge$votes_gop_16/county_merge$votes_total_16
+voteshares <- data.frame(rep_12_voteshare,rep_16_voteshare)
+
+## percent change from 2012 to 2016
+pct_change <- (rep_16_voteshare - rep_12_voteshare)/rep_12_voteshare #used percent increase formula 
+
+## plot the distributions
+pct_df <- data.frame(pct_change)
+ggplot(pct_df,aes(x=pct_change)) + geom_histogram() + geom_vline(xintercept = median(median(pct_df$pct_change,na.rm=TRUE)),col = "red") + ylab("Numbner of Counties") + xlab("Percent Change for all Counties") 
+
+#made a histogram to accurately show distribution for how much the vote percent difference was per county. Utilizing ggplot, we called 'pct_df' as the dataset and used the column 'pct_change' to the x-axis. We then used geom_histogram() to make it a histogram and used geom_vline() to create the red line to represnt the median line. Finally, we used labs() to label the x and y axis. 
+
+# This plot shows us that Counties/States barely changed their vote percentage between.Most states are near the 0 percent difference which is not a huge shift in vote choices. 
+
+## subset data to battleground states
+battlestates <- c("FL", "NC", "OH", "PA", "NH", "MI", "WI", "IA", "NV", "CO", "VA")
+bg_states <- subset(county_merge, state == c("FL", "NC", "OH", "PA", "NH", "MI", "WI", "IA", "NV", "CO", "VA"))
+rep_12_voteshare_bg <- bg_states$votes_gop_12/bg_states$votes_total_12
+rep_16_voteshare_bg <- bg_states$votes_gop_16/bg_states$votes_total_16
+pct_change_bg <- (rep_16_voteshare_bg - rep_12_voteshare_bg)/rep_12_voteshare_bg
+pct_df_bg <- data.frame(pct_change_bg)
+ggplot(pct_df_bg,aes(x=pct_change_bg)) + geom_histogram() + geom_vline(xintercept = median(pct_df_bg$pct_change_bg,na.rm=TRUE),col = "red") + ylab("Numbner of Counties") + xlab("Percent Change in Counties located in Battleground States")
+
+#made a histogram to accurately show distribution for how much the vote percent difference was per county for Battleground states. Utilizing ggplot, we called 'pct_df_bg' as the dataset and used the column 'pct_change_bg' to the x-axis. We then used geom_histogram() to make it a histogram and used geom_vline() to create the red line to represnt the median line. Finally, we used labs() to label the x and y axis. 
+#This plot showed us that unlike other counties in the United States, the percent change in Battleground States only increased positively meaning that Counties/States further cemented made their political beliefs instead of flipping. There is a peak of Counties/States that barely change their vote percent difference but there is more Counties/States that cemented their political beliefs more. 
+```

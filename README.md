@@ -1,1 +1,1 @@
-Portfolio of limited software engineering projects & data science focus
+Portfolio of software engineering projects & data science focus

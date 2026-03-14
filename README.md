@@ -1,1 +1,1 @@
-Portfolio of software engineering projects & data science focus
+Portfolio of Data Science Projects, Statistical Papers, and Software Development
